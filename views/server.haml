@@ -1,0 +1,12 @@
+%div{ :data => { :role => :page } }
+  %div{ :data => { :role => :header } }
+    %h1= @title
+
+  %div{ :data => { :role => :content } }
+    %ul{ :data => { :role => :listview } }
+      - @list_data.each do |section, config|
+        %li{ :data => { :role => :"list-divider" } }= config[:label]
+        - config[:values].each do |value, label|
+          %li
+            = label
+            %span.ui-li-count= @data[value]
