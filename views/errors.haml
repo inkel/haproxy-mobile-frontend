@@ -1,0 +1,7 @@
+%div{ :data => { :role => :page }, :id => "index" }
+  %div{ :data => { :role => :header } }
+    %h1 Errors
+  %div{ :data => { :role => :content } }
+    %p Last request and response errors for each proxy
+
+    %pre= @errors || "Hooray! No errors"

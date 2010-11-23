@@ -1,18 +1,32 @@
-%div{ :data => { :role => :page } }
+%div{ :data => { :role => :page }, :id => "index" }
   %div{ :data => { :role => :header } }
     %h1 HAProxy
 
   %div{ :data => { :role => :content } }
     %ul{ :data => { :role => :listview } }
       %li{ :data => { :role => :"list-divider" } } Frontends
-      - @haproxy.frontends.each do |name, data|
+      - @haproxy.frontends.each do |proxy|
         %li
-          %a{ :href => "/frontend/#{name}" }= name
+          %a{ :href => "/frontend/#{proxy[:pxname]}" }= proxy[:pxname]
       %li{ :data => { :role => :"list-divider" } } Backends
-      - @haproxy.backends.each do |name, data|
+      - @haproxy.backends.each do |proxy|
         %li
-          %a{ :href => "/backend/#{name}" }= name
+          %a{ :href => "/backend/#{proxy[:pxname]}" }= proxy[:pxname]
       %li{ :data => { :role => :"list-divider" } } Servers
-      - @haproxy.servers.each do |name, data|
+      - @haproxy.servers.each do |proxy|
         %li
-          %a{ :href => "/server/#{name}" }= name
+          %a{ :href => "/server/#{proxy[:pxname]}" }= proxy[:pxname]
+
+  %div{ :data => { :role => :footer } }
+    %a{ :href => "#info", :data => { :role => :button, :rel => :dialog, :transition => :pop } } Info
+    %a{ :href => "errors", :data => { :role => :button } } Errors
+    %a{ :href => "sessions", :data => { :role => :button } } Sessions
+
+%div{ :data => { :role => :page }, :id => "info" }
+  %div{ :data => { :role => :header } }
+    %h1 HAProxy information
+
+  %div{ :data => { :role => :content } }
+    %ul{ :data => { :role => :listview } }
+      - @haproxy.info.each do |key, value|
+        %li= "#{key}: #{value}"
