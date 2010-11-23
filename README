@@ -1,14 +1,18 @@
 HAProxy mobile frontend
+=======================
 
-I love HAProxy and its stats page, however in mobile devices that page
-is not optimized at all for mobile devices, so I decided to do a
-version for mobile devices. And also because I liked the idea of
-playing a little with jQuery Mobile, Ruby and Sinatra ;)
+I love HAProxy and its stats page, however that page is not optimized
+at all for mobile devices, so I decided to do a version for mobile
+devices. And also because I liked the idea of playing a little with
+jQuery Mobile, Ruby and Sinatra ;)
 
-So far this version uses a cached CSV file from HAProxy demo page. I'm
-planning to connect the Sinatra server to HAProxy stats socket, so
-it's easier and faster to get current stats.
+Also the HAProxy CSV parsing library... sucks. A lot. My final goal is
+that once this applications runs smoothly convert this HAProxy library
+to a gem, so it's possible to be used from another project.
 
-Also the HAProxy CSV parsing library... sucks. A lot. I'm also
-planning in making it way better, as a separated gem so it can be used
-in different projects. When am I going to achieve this? No idea.
+Configuration
+-------------
+
+The application currently deals with only one configuration parameter,
+the path to HAProxy stats socket. However it's still hardcoded (line
+9, in the call to HAProxy.connect(uri) method.)
