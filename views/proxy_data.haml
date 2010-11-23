@@ -1,0 +1,4 @@
+%div{ :data => { :role => :content } }
+  %ul{ :data => { :role => :listview } }
+    - @proxy.each do |key, value|
+      %li= "#{key}: #{value}"

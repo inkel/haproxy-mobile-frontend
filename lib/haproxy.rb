@@ -1,90 +1,110 @@
-#! /usr/bin/ruby
+libdir = File.dirname(__FILE__)
+$LOAD_PATH.unshift(libdir) unless $LOAD_PATH.include?(libdir)
 
-class HAProxy
-  TYPES = [ :frontend, :backend, :server ]
-  
-  attr_reader :frontends, :backends, :servers
+#require 'haproxy/stats'
+require 'haproxy/socket'
+require 'haproxy/csv_parser'
+require 'uri'
 
-  def initialize(path=nil)
-    @frontends = {}
-    @backends = {}
-    @servers = {}
-    parse_csv unless path.nil?
+module HAProxy
+
+  def self.connect(uri)
+    HAProxy::StatsReader.new(uri)
   end
 
-  def parse(csv)
-    columns = []
+  class StatsReader
 
-    csv.each do |line|
-      line.strip!
-      unless line.start_with? "#"
-        data = line.split(',')
-        pxname = data.shift
-
-        stats = { :pxname => pxname }
-
-        data.each_with_index do |value, i|
-          stats[columns[i + 1]] = value
-        end
-
-        case stats[:svname]
-          when "FRONTEND" then @frontends
-          when "BACKEND" then @backends
-          else @servers
-        end[pxname] = stats
+    def initialize(uri)
+      @@uri = URI.parse(uri)
+      
+      if @@uri.is_a?(URI::Generic) and File.socket?(@@uri.path)
+        @@stats = HAProxy::Socket.new(@@uri.path)
       else
-        line.gsub(/[^a-z,]/, '').split(',').each do |name|
-          columns << name.to_sym unless !name
+        raise NotImplementedError, "Currently only sockets are implemented"
+      end
+    end
+
+    def info
+      raise NotImplementedError, "Only sockets support commands" unless @@stats.is_a?(HAProxy::Socket)
+
+      returning({}) do |info|
+        @@stats.send_cmd "show info" do |line|
+          key, value = line.split(': ')
+          info[key.downcase.gsub('-', '_').to_sym] = value
         end
       end
     end
+
+    def errors
+      raise NotImplementedError, "Only sockets support commands" unless @@stats.is_a?(HAProxy::Socket)
+
+      returning("") do |errors|
+        @@stats.send_cmd "show errors" do |line|
+          errors << line
+        end
+      end
+    end
+
+    def sessions
+      raise NotImplementedError, "Only sockets support commands" unless @@stats.is_a?(HAProxy::Socket)
+
+      returning([]) do |sess|
+        @@stats.send_cmd "show sess" do |line|
+          sess << line
+        end
+      end
+    end
+
+    def stat
+      if @@stats.is_a?(HAProxy::Socket)
+        returning([]) do |stats|
+          @@stats.send_cmd "show stat" do |line|
+            stats << CSVParser.parse(line) unless line.start_with?('#')
+          end
+        end
+      else
+        raise NotImplementedError
+      end
+    end
+
+    def frontends
+      all.find_all { |proxy| proxy[:svname] == "FRONTEND" }
+    end
+
+    def backends
+      all.find_all { |proxy| proxy[:svname] == "BACKEND" }
+    end
+
+    def servers
+      all.find_all { |proxy| proxy[:svname] != "BACKEND" && proxy[:svname] != "FRONTEND" }
+    end
+
+    def all
+      if @@stats.is_a?(HAProxy::Socket)
+        returning([]) do |proxies|
+          @@stats.send_cmd "show stat" do |line|
+            unless line.start_with?('#')
+              proxies << CSVParser.parse(line)
+            end
+          end
+        end
+      else
+        raise NotImplementedError
+      end
+    end
+
+    def proxy_data(type, name)
+      all.find { |proxy| proxy[:pxname] == name && (%w{ FRONTEND BACKEND }.include?(type.upcase) || proxy[:pxname] == proxy[:svname]) }
+    end
+
+    private
+
+    # Borrowed from Rails 3
+    def returning(value)
+      yield(value)
+      value
+    end
+
   end
 
-  def sessions(type, pxname)
-    data = data_for(type, pxname)
-
-    {
-      :current => data[:scur],
-      :max => data[:smax],
-      :total => data[:stot],
-      :rate => {
-        :last_second => data[:rate],
-        :limit => data[:ratelim],
-        :max => data[:ratemax]
-      }
-    }
-  end
-
-  def data_for(type, pxname)
-    data = case type
-    when :frontend then @frontends
-    when :backend then @backends
-    when :server then @servers
-    else raise ArgumentException "Invalid type"
-    end[pxname]
-
-    raise ArgumentException unless !data.nil?
-
-    data
-  end
-end
-
-if __FILE__ == $0
-  h = HAProxy.new
-
-  h.parse(File.open("../haproxy.csv"))
-
-  # puts <<EOF
-  # Frontends:	#{h.frontends.size}
-  # Backends:	#{h.backends.size}
-  # Servers:	#{h.servers.size}
-  # EOF
-
-  h.backends.each do |pxname, data|
-    puts pxname, data.class
-  end
-
-  # puts h.servers['destentor'].inspect
-  # puts
-  # puts h.sessions(:server, "destentor").inspect
 end

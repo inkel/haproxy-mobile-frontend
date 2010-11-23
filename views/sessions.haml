@@ -1,0 +1,6 @@
+%div{ :data => { :role => :page }, :id => "index" }
+  %div{ :data => { :role => :header } }
+    %h1 Current sessions
+  %div{ :data => { :role => :content } }
+    - @sessions.each do |sess|
+      %code= sess
